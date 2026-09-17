@@ -98,6 +98,42 @@ h1, .top h1 { color: var(--ink); font-weight: 850; letter-spacing: -.055em; }
 }
 @media (prefers-reduced-motion: reduce) { .sound, .control { transition: none; } }
 
+
+/* Mobile reliability pass: safe areas, touch targets, and Safari/Chrome viewport behavior */
+html { min-height: 100%; background: var(--paper); -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
+body { min-height: 100svh; min-height: 100dvh; overscroll-behavior-y: none; }
+button, .control, .sound { touch-action: manipulation; -webkit-appearance: none; appearance: none; }
+.shell { width: 100%; padding-left: max(12px, env(safe-area-inset-left)); padding-right: max(12px, env(safe-area-inset-right)); padding-bottom: max(36px, calc(24px + env(safe-area-inset-bottom))); }
+.topbar, .top { gap: 10px; }
+.topbar > div:first-child, .top > div:first-child { min-width: 0; }
+h1, .top h1 { overflow-wrap: anywhere; }
+.sound { flex: 0 0 auto; min-height: 44px; white-space: nowrap; }
+.notice { font-size: .92rem; }
+.card { isolation: isolate; }
+.timer { flex: 0 0 auto; }
+.visual img { max-width: 100%; max-height: 100%; -webkit-user-drag: none; user-select: none; }
+.control, .control.primary { min-width: 48px; min-height: 48px; }
+@supports (height: 100dvh) { body { min-height: 100dvh; } }
+@media (max-width: 560px) {
+  .topbar, .top { align-items: flex-start; }
+  h1, .top h1 { max-width: 14ch; font-size: clamp(1.45rem, 7vw, 2rem); }
+  .notice { line-height: 1.38; }
+  .meta { gap: 8px; flex-wrap: wrap; }
+  .status { white-space: nowrap; }
+  .controls { gap: 8px; }
+  .control, .control.primary { flex: 0 0 auto; }
+}
+@media (max-width: 370px) {
+  .shell { padding-top: 14px; }
+  .sound { font-size: .78rem; padding-left: 9px; padding-right: 9px; }
+  .control { width: 46px; height: 46px; }
+  .control.primary { width: 66px; height: 66px; }
+  .visual { height: 170px; }
+}
+@media (hover: none) {
+  .sound:hover, .control:hover { transform: none; }
+}
+
 </style></head>
 <body><main class="shell"><header class="top"><div><div class="eyebrow">Gentle eye comfort routine</div><h1>ਅੱਖਾਂ ਦੀ ਆਰਾਮ ਕਸਰਤ <span style="font-weight:500">· Eye comfort</span></h1></div><button class="sound" id="sound" aria-pressed="true">🔊 Voice on</button></header>
 <section class="notice"><div>ⓘ</div><div><strong>Near-sightedness · ਨਜ਼ਰ ਦੀ ਸੁਰੱਖਿਆ</strong>These gentle exercises may help comfort and reduce screen tiredness, but they do <b>not</b> remove near-sightedness or replace glasses, contacts, or an eye exam. Stop for pain, flashing lights, new floaters, double vision, or sudden vision change and seek medical care.</div></section>
@@ -118,4 +154,28 @@ const FATHER_LABELS=['Father doing palming relaxation', 'Father blinking slowly'
 function art(n){return '<img src="'+FATHER_IMAGES[n]+'" alt="'+FATHER_LABELS[n]+'">'}
 function render(){let e=EX[i];$('visual').innerHTML=art(i);$('time').textContent=String(left).padStart(2,'0');$('ring').style.strokeDashoffset=C-(left/total)*C;$('progress').textContent=done?'7 / 7 complete':`Exercise ${i+1} of 7`;if(done){$('status').textContent='Complete · ਮੁਕੰਮਲ';$('status').className='status done';$('title').textContent='ਸ਼ਾਬਾਸ਼! ਰੁਟੀਨ ਪੂਰੀ ਹੋ ਗਈ';$('english').textContent='Well done — rest your eyes';$('desc').textContent='You finished the routine. Blink normally and relax.';$('next').textContent='Press ▶ to start again';$('time').textContent='00';return}if(rest){$('status').textContent='Rest · ਆਰਾਮ';$('status').className='status rest';$('title').textContent='ਅੱਖਾਂ ਨੂੰ ਆਰਾਮ ਦਿਓ';$('english').textContent='Rest your eyes';$('desc').textContent='Look away from the screen and breathe comfortably.';$('next').textContent='Next · ਅਗਲਾ: '+e.en;$('ring').style.stroke='var(--gold)'}else{$('status').textContent=running?'Moving · ਕਸਰਤ':'Ready · ਤਿਆਰ';$('status').className='status';$('title').textContent=e.pa;$('english').textContent=e.en;$('desc').textContent=e.desc;$('next').textContent=i<6?'Next · ਅਗਲਾ: '+EX[i+1].en:'Last exercise · ਆਖ਼ਰੀ ਕਸਰਤ';$('ring').style.stroke='var(--blue)'}$('play').textContent=running?'Ⅱ':'▶'}
 function stop(){clearInterval(timer);timer=null;running=false}function say(t){if(!sound||!('speechSynthesis'in window))return;speechSynthesis.cancel();let u=new SpeechSynthesisUtterance(t);u.lang='hi-IN';u.rate=.88;speechSynthesis.speak(u)}function start(){if(done){reset();return}running=true;render();if(left===total)say(rest?'आंखों को आराम दें। अगली कसरत: '+EX[i].voice:EX[i].voice);timer=setInterval(()=>{if(left>0){left--;render()}else if(!rest){if(i<6){rest=true;left=total=REST;say('आंखों को आराम दें। अगली कसरत: '+EX[i+1].voice)}else{stop();done=true;say('शाबाश! आंखों की कसरत पूरी हो गई।')}render()}else{rest=false;left=total=45;say(EX[i].voice);render()}},1000)}function toggle(){if(running){stop();render()}else start()}function reset(){stop();i=0;rest=false;done=false;left=total=45;render()}function step(d){stop();done=false;if(d>0){if(rest){rest=false;left=total=45}else if(i<6){i++;left=total=45}else{done=true;left=0}}else{if(rest){rest=false;left=total=45}else if(i>0){i--;left=total=45}}render()}$('play').onclick=toggle;$('forward').onclick=()=>step(1);$('prev').onclick=()=>step(-1);$('reset').onclick=reset;$('sound').onclick=()=>{sound=!sound;$('sound').textContent=sound?'🔊 Voice on':'🔇 Voice off';$('sound').setAttribute('aria-pressed',sound);if(!sound)speechSynthesis?.cancel()};render();
-</script></body></html>
+</script>
+<script>
+/* Defensive mobile behavior: pause when backgrounded and resume cleanly after a browser return. */
+(function () {
+  function cancelSpeech() {
+    if ('speechSynthesis' in window) window.speechSynthesis.cancel();
+  }
+  document.addEventListener('visibilitychange', function () {
+    if (document.visibilityState === 'hidden' && typeof running !== 'undefined' && running) {
+      stop();
+      render();
+    }
+  }, { passive: true });
+  window.addEventListener('pagehide', function () {
+    if (typeof running !== 'undefined' && running) { stop(); render(); }
+    cancelSpeech();
+  }, { passive: true });
+  window.addEventListener('pageshow', function () {
+    if (typeof render === 'function') render();
+  }, { passive: true });
+  document.addEventListener('touchstart', function () {}, { passive: true });
+})();
+</script>
+
+</body></html>
