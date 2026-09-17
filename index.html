@@ -134,6 +134,31 @@ h1, .top h1 { overflow-wrap: anywhere; }
   .sound:hover, .control:hover { transform: none; }
 }
 
+
+/* Mobile-first control dock: primary actions stay visible without scrolling */
+@media (max-width: 600px) {
+  html { scroll-padding-bottom: 92px; }
+  body { padding-bottom: 88px; }
+  .controls {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 50;
+    width: 100%;
+    margin: 0;
+    padding: 10px max(14px, env(safe-area-inset-left)) max(10px, env(safe-area-inset-bottom)) max(14px, env(safe-area-inset-right));
+    background: rgba(255,255,255,.9);
+    border-top: 1px solid rgba(210,226,232,.95);
+    box-shadow: 0 -12px 28px rgba(16,42,67,.12);
+    -webkit-backdrop-filter: blur(16px);
+    backdrop-filter: blur(16px);
+  }
+  .controls .control { box-shadow: 0 4px 12px rgba(16,42,67,.1); }
+  .controls .control.primary { transform: translateY(-5px); }
+  .controls .control.primary:active { transform: translateY(-5px) scale(.96); }
+}
+
 </style></head>
 <body><main class="shell"><header class="top"><div><div class="eyebrow">Gentle eye comfort routine</div><h1>ਅੱਖਾਂ ਦੀ ਆਰਾਮ ਕਸਰਤ <span style="font-weight:500">· Eye comfort</span></h1></div><button class="sound" id="sound" aria-pressed="true">🔊 Voice on</button></header>
 <section class="notice"><div>ⓘ</div><div><strong>Near-sightedness · ਨਜ਼ਰ ਦੀ ਸੁਰੱਖਿਆ</strong>These gentle exercises may help comfort and reduce screen tiredness, but they do <b>not</b> remove near-sightedness or replace glasses, contacts, or an eye exam. Stop for pain, flashing lights, new floaters, double vision, or sudden vision change and seek medical care.</div></section>
