@@ -261,6 +261,24 @@ h1, .top h1 { overflow-wrap: anywhere; }
 .safety-start { background: linear-gradient(145deg, var(--accent), var(--accent-dark, #087168)); color: #fff; box-shadow: 0 10px 20px rgba(11,143,131,.25); }
 @media (max-width: 600px) { .safety-modal { align-items: end; padding: 12px; padding-bottom: max(12px, env(safe-area-inset-bottom)); } .safety-dialog { border-radius: 24px; padding: 20px; } }
 
+
+/* Shared Kheti family visual system: gradient depth + fluid motion */
+:root{--shared-blue:#274c77;--shared-blue-2:#6096ba;--shared-gold:#f2c46d;--shared-shadow:0 18px 50px rgba(31,55,90,.16);--shared-ease:cubic-bezier(.23,1,.32,1)}
+html{scroll-behavior:smooth}
+body{background-image:linear-gradient(125deg,rgba(39,76,119,.12),rgba(96,150,186,.08) 42%,rgba(242,196,109,.14) 100%);background-attachment:fixed}
+body:before{content:"";position:fixed;inset:-20%;z-index:0;pointer-events:none;background:radial-gradient(circle at 12% 12%,rgba(96,150,186,.16),transparent 28%),radial-gradient(circle at 88% 18%,rgba(242,196,109,.14),transparent 25%),radial-gradient(circle at 72% 90%,rgba(39,76,119,.12),transparent 30%);filter:blur(12px);animation:sharedDrift 18s ease-in-out infinite alternate}
+body>*{position:relative;z-index:1}
+button,.btn,a,input,select,textarea{transition:transform .18s var(--shared-ease),box-shadow .18s var(--shared-ease),background-color .18s var(--shared-ease),border-color .18s var(--shared-ease),color .18s var(--shared-ease)}
+button:hover,.btn:hover,a.button:hover{transform:translateY(-2px);box-shadow:0 9px 22px rgba(39,76,119,.16)}
+button:active,.btn:active,a.button:active{transform:translateY(0) scale(.98)}
+input:focus,select:focus,textarea:focus{box-shadow:0 0 0 4px rgba(96,150,186,.2)!important}
+section,.card,[class*="-card"],[class*="-panel"],[class*="-tile"],.panel,.hero,.header{animation:sharedRise .65s var(--shared-ease) both}
+section:nth-of-type(2),.card:nth-child(2),[class*="-card"]:nth-child(2){animation-delay:.05s}
+section:nth-of-type(3),.card:nth-child(3),[class*="-card"]:nth-child(3){animation-delay:.1s}
+section:nth-of-type(4),.card:nth-child(4),[class*="-card"]:nth-child(4){animation-delay:.15s}
+@keyframes sharedRise{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:translateY(0)}}
+@keyframes sharedDrift{from{transform:translate3d(-1%,0,0) scale(1)}to{transform:translate3d(1.5%,1%,0) scale(1.05)}}
+@media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}*,*:before,*:after{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important;scroll-behavior:auto!important}}
 </style></head>
 <body><main class="shell"><header class="top"><div><div class="eyebrow">Gentle eye comfort routine</div><h1>ਅੱਖਾਂ ਦੀ ਆਰਾਮ ਕਸਰਤ <span style="font-weight:500">· Eye comfort</span></h1></div><button class="sound" id="sound" aria-pressed="true">🔊 Voice on</button></header>
 <section class="card" aria-live="polite"><div class="meta"><span id="progress">Exercise 1 of 7</span><span class="status" id="status">Ready · ਤਿਆਰ</span></div><div class="timer"><svg viewBox="0 0 240 240"><circle class="ring-bg" cx="120" cy="120" r="106"/><circle class="ring" id="ring" cx="120" cy="120" r="106"/></svg><div class="clock"><div class="time" id="time">45</div><div class="seconds">seconds · ਸਕਿੰਟ</div></div></div><div class="visual" id="visual"></div><div class="exercise"><h2 id="title">ਹਥੇਲੀਆਂ ਨਾਲ ਆਰਾਮ</h2><p class="english" id="english">Palming relaxation</p><p class="instructions" id="desc">Rub your hands gently, close your eyes, and rest your palms lightly over them without pressing.</p><div class="next" id="next">Next · ਅਗਲਾ: Blink reset</div></div><div class="controls"><button class="control" id="prev" aria-label="Previous">◀</button><button class="control primary" id="play" aria-label="Start">▶</button><button class="control" id="forward" aria-label="Next">▶</button><button class="control" id="reset" aria-label="Reset">↻</button></div></section><section class="tips"><div class="tip"><b>Wear glasses</b>Use the prescribed glasses for clear vision.</div><div class="tip"><b>Do not press</b>Never push or rub hard on closed eyes.</div><div class="tip"><b>Look away</b>For screens, take regular distance breaks.</div></section><p class="footer">General comfort routine only—not a treatment for myopia or an eye condition. An optometrist or ophthalmologist can tailor advice.</p></main>
