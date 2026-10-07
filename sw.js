@@ -1,10 +1,17 @@
-const CACHE_NAME = 'eye-comfort-v2';
+const CACHE_NAME = 'eye-comfort-v3';
 const APP_SHELL = [
   './',
   './index.html',
   './manifest.json',
   './icons/icon-192.png',
   './icons/icon-512.png',
+  './assets/eye-exercise-1.webp',
+  './assets/eye-exercise-2.webp',
+  './assets/eye-exercise-3.webp',
+  './assets/eye-exercise-4.webp',
+  './assets/eye-exercise-5.webp',
+  './assets/eye-exercise-6.webp',
+  './assets/eye-exercise-7.webp',
 ];
 
 self.addEventListener('install', event => {
