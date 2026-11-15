@@ -8,13 +8,13 @@ A gentle, timed eye-comfort routine PWA for personal and family use. It guides t
 
 - Seven guided activities with Punjabi and English labels and instructions.
 - Exercise timer, rest intervals, start/pause, previous/next, reset, and voice controls.
-- Offline Hindi voice (Kokoro-82M, voice `hf_alpha`) that works without internet after the first use, with the device's built-in speech as fallback.
+- Spoken Hindi announcements use the device's built-in speech (speechSynthesis, hi-IN) — no voice model to download.
 - Installable PWA with an offline app shell and embedded illustrations.
-- No account required; voice is the offline Kokoro Hindi voice by default, falling back to the device's built-in speech if Kokoro cannot load.
+- No account required; announcements speak with the device's built-in Hindi voice.
 
 ## Use and install
 
-Open the deployed link in a modern browser. On a supported phone, use **Install app** or **Add to Home Screen** to install it. After the first successful visit, the app shell is available offline. The Hindi voice downloads ~137 MB of model files on first use (in the background, after starting an exercise or turning Voice on) and then works offline; it needs a modern browser with WebAssembly and roughly 1 GB of free tab memory while speaking.
+Open the deployed link in a modern browser. On a supported phone, use **Install app** or **Add to Home Screen** to install it. After the first successful visit, the app shell is available offline. Spoken announcements use the device's built-in Hindi voice, so there is no voice-model download.
 
 For local testing, serve the repository root over HTTP, for example:
 
