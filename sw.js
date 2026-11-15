@@ -1,4 +1,4 @@
-const CACHE_NAME = 'eye-comfort-v3';
+const CACHE_NAME = 'eye-comfort-v4';
 const APP_SHELL = [
   './',
   './index.html',
@@ -32,6 +32,10 @@ self.addEventListener('activate', event => {
   );
 });
 
+/* TTS files (vendor/kokoro, vendor/espeak-ng, vendor/ort, models/ — ~137 MB)
+   are NOT precached: they are runtime-cached here on first fetch, i.e. on
+   first TTS use only. The model/voices are additionally cached by
+   Transformers.js in its own Cache Storage buckets. */
 self.addEventListener('fetch', event => {
   if (event.request.method !== 'GET') return;
   const requestUrl = new URL(event.request.url);

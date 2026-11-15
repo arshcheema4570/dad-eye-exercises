@@ -8,6 +8,9 @@
 <link rel="manifest" href="./manifest.json">
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg%20xmlns%3D%27http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%27%20viewBox%3D%270%200%20512%20512%27%3E%3Crect%20width%3D%27512%27%20height%3D%27512%27%20rx%3D%27112%27%20fill%3D%27%23173b55%27%2F%3E%3Cpolygon%20points%3D%2784%2C256%20168%2C158%20344%2C158%20428%2C256%20344%2C354%20168%2C354%27%20fill%3D%27%23ffffff%27%2F%3E%3Ccircle%20cx%3D%27256%27%20cy%3D%27256%27%20r%3D%2760%27%20fill%3D%27%23176b87%27%2F%3E%3Ccircle%20cx%3D%27256%27%20cy%3D%27256%27%20r%3D%2728%27%20fill%3D%27%230b2a3a%27%2F%3E%3C%2Fsvg%3E">
 <link rel="apple-touch-icon" href="./icons/icon-192.png">
+<script type="importmap">
+{"imports":{"espeak-ng":"./vendor/espeak-ng/espeak-ng.js"}}
+</script>
 <title>ਅੱਖਾਂ ਦੀ ਆਰਾਮ ਕਸਰਤ · Eye comfort</title>
 <meta name="description" content="Seven timed eye-comfort activities with rest breaks and safety notes. General comfort guidance only; not a diagnosis or medical treatment.">
 <style>
@@ -291,6 +294,115 @@ section:nth-of-type(4),.card:nth-child(4),[class*="-card"]:nth-child(4){animatio
       </div>
     </div>
 
+<script type="module">
+/* Offline Kokoro-82M Hindi voice (q8, WASM CPU — never WebGPU).
+   Lazy: nothing TTS-related downloads until the first warm-up (exercise
+   start or Voice on). Bridge to the classic script below via window globals.
+   If Kokoro is unavailable or fails, say() falls back to native speech. */
+let tts = null, loadPromise = null, loadFailed = false;
+let audioCtx = null;
+const activeSources = new Set();
+let curToken = 0; /* bump to invalidate in-flight generation/playback */
+let genQueue = Promise.resolve(); /* one generate() at a time (INTEGRATION.md §3) */
+const VOICE = 'hf_alpha'; /* female Hindi default; hf_beta, hm_omega, hm_psi also vendored */
+
+function ensureCtx() {
+  if (!audioCtx) { try { audioCtx = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) { audioCtx = null; } }
+  if (audioCtx && audioCtx.state === 'suspended') audioCtx.resume().catch(() => {});
+  return audioCtx;
+}
+
+async function loadTTS() {
+  if (tts) return tts;
+  if (loadPromise) return loadPromise;
+  loadPromise = (async () => {
+    const { KokoroTTS, env, setVoiceDataUrl } = await import('./vendor/kokoro/kokoro-hindi.web.js');
+    env.allowLocalModels = true;    /* browser default is false */
+    env.allowRemoteModels = false;  /* a missing local file throws instead of fetching from HF */
+    env.wasmPaths = './vendor/ort/'; /* trailing slash; else the bundle fetches 21.6 MB from jsDelivr */
+    setVoiceDataUrl('./models/Kokoro-82M-v1.0-ONNX/voices'); /* no trailing slash */
+    tts = await KokoroTTS.from_pretrained('./models/Kokoro-82M-v1.0-ONNX', { dtype: 'q8', device: 'wasm' });
+    return tts;
+  })();
+  try { return await loadPromise; }
+  catch (e) { loadFailed = true; loadPromise = null; throw e; }
+}
+
+/* Start loading in the background (no audio). Safe to call repeatedly. */
+function warmKokoro() {
+  ensureCtx();
+  if (tts || loadFailed || loadPromise) return;
+  loadTTS().catch(() => { /* loadFailed is set; say() falls back to native */ });
+}
+
+function cancelKokoro() {
+  curToken++;
+  activeSources.forEach(src => { try { src.stop(); } catch (e) {} });
+  activeSources.clear();
+}
+
+function splitSentences(text) {
+  return (String(text).match(/[^।!?]+[।!?]*/g) || [text]).map(s => s.trim()).filter(Boolean);
+}
+
+function playAudio(out, token) {
+  const ctx = audioCtx;
+  const buf = ctx.createBuffer(1, out.audio.length, out.sampling_rate);
+  buf.copyToChannel(out.audio, 0);
+  const src = ctx.createBufferSource();
+  src.buffer = buf; src.connect(ctx.destination);
+  activeSources.add(src);
+  return new Promise(resolve => {
+    src.onended = () => { activeSources.delete(src); resolve(); };
+    try { src.start(); } catch (e) { activeSources.delete(src); resolve(); }
+  });
+}
+
+/* Speak via Kokoro. Returns true if Kokoro handled it (or a newer
+   announcement superseded it), false if the caller should use native TTS.
+   Never throws. Generation runs async — the timer is never blocked. */
+async function kokoroSpeak(text, voice) {
+  const myToken = ++curToken;
+  const isCurrent = () => myToken === curToken;
+  try {
+    let engine;
+    if (loadFailed) return false;
+    if (tts) engine = tts;
+    else if (loadPromise) {
+      engine = await Promise.race([
+        loadPromise,
+        new Promise(r => setTimeout(() => r(null), 2500))
+      ]);
+      if (!engine) return false; /* still loading: speak natively now, on time */
+    } else {
+      warmKokoro();
+      return false; /* not started yet: native now, Kokoro warms for next time */
+    }
+    if (!isCurrent()) return true; /* superseded while loading */
+    const ctx = ensureCtx();
+    if (!ctx) return false;
+    if (ctx.state !== 'running') { try { await ctx.resume(); } catch (e) {} }
+    if (ctx.state !== 'running') return false; /* audio blocked: native fallback */
+    for (const s of splitSentences(text)) {
+      if (!isCurrent()) return true;
+      const job = genQueue.then(() => isCurrent() ? engine.generate(s, { voice: voice || VOICE }) : null);
+      genQueue = job.catch(() => null);
+      const out = await job;
+      if (!out || !isCurrent()) return true;
+      await playAudio(out, myToken);
+      if (!isCurrent()) return true;
+    }
+    return true;
+  } catch (e) {
+    console.warn('[kokoro] speak failed, falling back to native:', e);
+    return false;
+  }
+}
+
+window.__kokoroWarm = warmKokoro;
+window.__kokoroCancel = cancelKokoro;
+window.__kokoroSpeak = kokoroSpeak;
+</script>
 <script>
 const EX=[
 {pa:'ਹਥੇਲੀਆਂ ਨਾਲ ਆਰਾਮ',en:'Palming relaxation',desc:'Rub your hands gently, close your eyes, and rest your palms lightly over them without pressing.',voice:'अपने हाथों को धीरे रगड़ें, आंखें बंद करें और बिना दबाव के हथेलियां आंखों पर हल्के से रखें।'},
@@ -306,13 +418,15 @@ const FATHER_IMAGES=['./assets/eye-exercise-1.webp', './assets/eye-exercise-2.we
 const FATHER_LABELS=['Father doing palming relaxation', 'Father blinking slowly', 'Father focusing near and far', 'Father tracking side to side', 'Father tracking up and down', 'Father following a figure eight', 'Father looking into the distance and breathing'];
 function art(n){return '<img src="'+FATHER_IMAGES[n]+'" alt="'+FATHER_LABELS[n]+'">'}
 function render(){let e=EX[i];$('visual').innerHTML=art(i);$('time').textContent=String(left).padStart(2,'0');$('ring').style.strokeDashoffset=C-(left/total)*C;$('progress').textContent=done?'7 / 7 complete':`Exercise ${i+1} of 7`;if(done){$('status').textContent='Complete · ਮੁਕੰਮਲ';$('status').className='status done';$('title').textContent='ਸ਼ਾਬਾਸ਼! ਰੁਟੀਨ ਪੂਰੀ ਹੋ ਗਈ';$('english').textContent='Well done — rest your eyes';$('desc').textContent='You finished the routine. Blink normally and relax.';$('next').textContent='Press ▶ to start again';$('time').textContent='00';return}if(rest){$('status').textContent='Rest · ਆਰਾਮ';$('status').className='status rest';$('title').textContent='ਅੱਖਾਂ ਨੂੰ ਆਰਾਮ ਦਿਓ';$('english').textContent='Rest your eyes';$('desc').textContent='Look away from the screen and breathe comfortably.';$('next').textContent='Next · ਅਗਲਾ: '+e.en;$('ring').style.stroke='var(--gold)'}else{$('status').textContent=running?'Moving · ਕਸਰਤ':'Ready · ਤਿਆਰ';$('status').className='status';$('title').textContent=e.pa;$('english').textContent=e.en;$('desc').textContent=e.desc;$('next').textContent=i<6?'Next · ਅਗਲਾ: '+EX[i+1].en:'Last exercise · ਆਖ਼ਰੀ ਕਸਰਤ';$('ring').style.stroke='var(--blue)'}$('play').textContent=running?'Ⅱ':'▶'}
-function stop(){clearInterval(timer);timer=null;running=false}function say(t){if(!sound||!('speechSynthesis'in window))return;speechSynthesis.cancel();let u=new SpeechSynthesisUtterance(t);u.lang='hi-IN';u.rate=.88;speechSynthesis.speak(u)}function start(){if(done){reset();return}running=true;render();if(left===total)say(rest?'आंखों को आराम दें। अगली कसरत: '+EX[i].voice:EX[i].voice);timer=setInterval(()=>{if(left>0){left--;render()}else if(!rest){if(i<6){rest=true;left=total=REST;say('आंखों को आराम दें। अगली कसरत: '+EX[i+1].voice)}else{stop();done=true;say('शाबाश! आंखों की कसरत पूरी हो गई।')}render()}else{rest=false;left=total=45;say(EX[i].voice);render()}},1000)}function toggle(){if(running){stop();render()}else start()}function reset(){stop();i=0;rest=false;done=false;left=total=45;render()}function step(d){stop();done=false;if(d>0){if(rest){rest=false;left=total=45}else if(i<6){i++;left=total=45}else{done=true;left=0}}else{if(rest){rest=false;left=total=45}else if(i>0){i--;left=total=45}}render()}let confirmed=false;const safetyModal=$('safetyModal');function requestStart(){if(!running&&!done&&!confirmed){safetyModal.hidden=false;$('safetyStart').focus();return}toggle()}$('safetyStart').onclick=()=>{confirmed=true;safetyModal.hidden=true;start()};$('safetyCancel').onclick=()=>{safetyModal.hidden=true;$('play').focus()};$('play').onclick=requestStart;$('forward').onclick=()=>step(1);$('prev').onclick=()=>step(-1);$('reset').onclick=reset;$('sound').onclick=()=>{sound=!sound;$('sound').textContent=sound?'🔊 Voice on':'🔇 Voice off';$('sound').setAttribute('aria-pressed',sound);if(!sound)speechSynthesis?.cancel()};render();
+function stop(){clearInterval(timer);timer=null;running=false}function speakNative(t){if(!('speechSynthesis'in window))return;speechSynthesis.cancel();let u=new SpeechSynthesisUtterance(t);u.lang='hi-IN';u.rate=.88;speechSynthesis.speak(u)}
+function say(t){if(!sound)return;if(window.__kokoroCancel)window.__kokoroCancel();speechSynthesis.cancel();if(window.__kokoroSpeak){window.__kokoroSpeak(t,'hf_alpha').then(took=>{if(!took&&sound)speakNative(t)}).catch(()=>{if(sound)speakNative(t)})}else speakNative(t)}function start(){if(done){reset();return}running=true;render();if(left===total)say(rest?'आंखों को आराम दें। अगली कसरत: '+EX[i].voice:EX[i].voice);timer=setInterval(()=>{if(left>0){left--;render()}else if(!rest){if(i<6){rest=true;left=total=REST;say('आंखों को आराम दें। अगली कसरत: '+EX[i+1].voice)}else{stop();done=true;say('शाबाश! आंखों की कसरत पूरी हो गई।')}render()}else{rest=false;left=total=45;say(EX[i].voice);render()}},1000)}function toggle(){if(running){stop();render()}else start()}function reset(){stop();i=0;rest=false;done=false;left=total=45;render()}function step(d){stop();done=false;if(d>0){if(rest){rest=false;left=total=45}else if(i<6){i++;left=total=45}else{done=true;left=0}}else{if(rest){rest=false;left=total=45}else if(i>0){i--;left=total=45}}render()}let confirmed=false;const safetyModal=$('safetyModal');function requestStart(){if(window.__kokoroWarm)window.__kokoroWarm();if(!running&&!done&&!confirmed){safetyModal.hidden=false;$('safetyStart').focus();return}toggle()}$('safetyStart').onclick=()=>{confirmed=true;safetyModal.hidden=true;if(window.__kokoroWarm)window.__kokoroWarm();start()};$('safetyCancel').onclick=()=>{safetyModal.hidden=true;$('play').focus()};$('play').onclick=requestStart;$('forward').onclick=()=>step(1);$('prev').onclick=()=>step(-1);$('reset').onclick=reset;$('sound').onclick=()=>{sound=!sound;$('sound').textContent=sound?'🔊 Voice on':'🔇 Voice off';$('sound').setAttribute('aria-pressed',sound);if(!sound){speechSynthesis?.cancel();if(window.__kokoroCancel)window.__kokoroCancel()}else if(window.__kokoroWarm)window.__kokoroWarm()};render();
 </script>
 <script>
 /* Defensive mobile behavior: pause when backgrounded and resume cleanly after a browser return. */
 (function () {
   function cancelSpeech() {
     if ('speechSynthesis' in window) window.speechSynthesis.cancel();
+    if (window.__kokoroCancel) window.__kokoroCancel();
   }
   document.addEventListener('visibilitychange', function () {
     if (document.visibilityState === 'hidden' && typeof running !== 'undefined' && running) {
