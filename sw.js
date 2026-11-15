@@ -1,4 +1,4 @@
-const CACHE_NAME = 'eye-comfort-v4';
+const CACHE_NAME = 'eye-comfort-v5';
 const APP_SHELL = [
   './',
   './index.html',
